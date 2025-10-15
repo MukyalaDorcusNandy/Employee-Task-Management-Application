@@ -3,9 +3,18 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, Search, Pencil, Trash2 } from "lucide-react"
-import { EmployeeFormDialog } from "@/components/employee-form-dialog"
-import type { Employee } from "@/lib/types/employee"
+import { Plus, Search, Pencil, Trash2, X } from "lucide-react"
+
+interface Employee {
+  id: number
+  employeeId: string
+  name: string
+  email: string
+  department: string
+  designation: string
+  salary: number
+  joinDate: string
+}
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -14,6 +23,14 @@ export default function EmployeesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    department: "",
+    designation: "",
+    salary: "",
+    joinDate: ""
+  })
 
   useEffect(() => {
     fetchEmployees()
@@ -46,13 +63,9 @@ export default function EmployeesPage() {
     if (!confirm("Are you sure you want to delete this employee?")) return
 
     try {
-      const response = await fetch(`/api/employees/${id}`, {
-        method: "DELETE",
-      })
-
-      if (response.ok) {
-        fetchEmployees()
-      }
+      // Mock delete - in real app, call DELETE API
+      setEmployees(employees.filter(emp => emp.id !== id))
+      setFilteredEmployees(filteredEmployees.filter(emp => emp.id !== id))
     } catch (error) {
       console.error("[v0] Error deleting employee:", error)
     }
@@ -60,12 +73,73 @@ export default function EmployeesPage() {
 
   const handleEdit = (employee: Employee) => {
     setSelectedEmployee(employee)
+    setFormData({
+      name: employee.name,
+      email: employee.email,
+      department: employee.department,
+      designation: employee.designation,
+      salary: employee.salary.toString(),
+      joinDate: employee.joinDate
+    })
     setDialogOpen(true)
   }
 
   const handleAdd = () => {
     setSelectedEmployee(null)
+    setFormData({
+      name: "",
+      email: "",
+      department: "",
+      designation: "",
+      salary: "",
+      joinDate: ""
+    })
     setDialogOpen(true)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    try {
+      if (selectedEmployee) {
+        // Update existing employee
+        const updatedEmployee = {
+          ...selectedEmployee,
+          ...formData,
+          salary: parseInt(formData.salary)
+        }
+        
+        setEmployees(employees.map(emp => 
+          emp.id === selectedEmployee.id ? updatedEmployee : emp
+        ))
+      } else {
+        // Add new employee
+        const newEmployee: Employee = {
+          id: employees.length + 1,
+          employeeId: `EMP${String(employees.length + 1).padStart(3, '0')}`,
+          name: formData.name,
+          email: formData.email,
+          department: formData.department,
+          designation: formData.designation,
+          salary: parseInt(formData.salary),
+          joinDate: formData.joinDate
+        }
+        
+        setEmployees([...employees, newEmployee])
+      }
+      
+      setDialogOpen(false)
+      setFormData({
+        name: "",
+        email: "",
+        department: "",
+        designation: "",
+        salary: "",
+        joinDate: ""
+      })
+    } catch (error) {
+      console.error("[v0] Error saving employee:", error)
+    }
   }
 
   if (loading) {
@@ -114,19 +188,26 @@ export default function EmployeesPage() {
                   <td className="px-6 py-4 text-sm text-foreground">{employee.employeeId}</td>
                   <td className="px-6 py-4 text-sm font-medium text-foreground">{employee.name}</td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">{employee.email}</td>
-                  <td className="px-6 py-4 text-sm text-foreground">{(employee as any).department_name || "-"}</td>
+                  <td className="px-6 py-4 text-sm text-foreground">{employee.department || "-"}</td>
                   <td className="px-6 py-4 text-sm text-foreground">{employee.designation || "-"}</td>
-                  <td className="px-6 py-4 text-sm text-foreground">{employee.salary ? `$${employee.salary}` : "-"}</td>
+                  <td className="px-6 py-4 text-sm text-foreground">
+                    {employee.salary ? `$${employee.salary.toLocaleString()}` : "-"}
+                  </td>
                   <td className="px-6 py-4 text-right text-sm">
                     <div className="flex items-center justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => handleEdit(employee)}>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={() => handleEdit(employee)}
+                        className="h-8 w-8 p-0"
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => handleDelete(employee.id)}
-                        className="text-destructive hover:text-destructive"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -139,16 +220,108 @@ export default function EmployeesPage() {
         </div>
 
         {filteredEmployees.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">No employees found</div>
+          <div className="text-center py-12 text-muted-foreground">
+            {searchQuery ? "No employees match your search" : "No employees found"}
+          </div>
         )}
       </div>
 
-      <EmployeeFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        employee={selectedEmployee}
-        onSuccess={fetchEmployees}
-      />
+      {/* Employee Form Modal */}
+      {dialogOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">
+                {selectedEmployee ? "Edit Employee" : "Add Employee"}
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDialogOpen(false)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Full Name</label>
+                <Input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Department</label>
+                <Input
+                  type="text"
+                  value={formData.department}
+                  onChange={(e) => setFormData({...formData, department: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Designation</label>
+                <Input
+                  type="text"
+                  value={formData.designation}
+                  onChange={(e) => setFormData({...formData, designation: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Salary</label>
+                <Input
+                  type="number"
+                  value={formData.salary}
+                  onChange={(e) => setFormData({...formData, salary: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Join Date</label>
+                <Input
+                  type="date"
+                  value={formData.joinDate}
+                  onChange={(e) => setFormData({...formData, joinDate: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1">
+                  {selectedEmployee ? "Update" : "Add"} Employee
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

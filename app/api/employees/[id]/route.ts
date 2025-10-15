@@ -1,32 +1,31 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { sql, handleDbError } from "@/lib/db"
+import { NextRequest, NextResponse } from "next/server";
+import { sql, handleDbError } from "@/lib/db";
 
 // GET single employee
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const result = await sql`
-      SELECT 
-        e.*,
-        d.name as department_name
-      FROM employees e
-      LEFT JOIN departments d ON e.department_id = d.id
-      WHERE e.id = ${params.id}
-    `
+    const [employee]: any = await sql(
+      `SELECT e.*, d.name AS department_name
+       FROM employees e
+       LEFT JOIN departments d ON e.department_id = d.id
+       WHERE e.id = ?`,
+      [params.id]
+    );
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+    if (!employee) {
+      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
     }
 
-    return NextResponse.json(result[0])
+    return NextResponse.json(employee);
   } catch (error) {
-    return NextResponse.json({ error: handleDbError(error) }, { status: 500 })
+    return NextResponse.json({ error: handleDbError(error) }, { status: 500 });
   }
 }
 
 // PUT update employee
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const body = await request.json()
+    const body = await request.json();
     const {
       employeeId,
       name,
@@ -39,51 +38,48 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       salary,
       role,
       imageUrl,
-    } = body
+      password
+    } = body;
 
-    const result = await sql`
-      UPDATE employees
-      SET 
-        employee_id = ${employeeId},
-        name = ${name},
-        email = ${email},
-        date_of_birth = ${dateOfBirth || null},
-        gender = ${gender || null},
-        marital_status = ${maritalStatus || null},
-        designation = ${designation || null},
-        department_id = ${departmentId || null},
-        salary = ${salary || null},
-        role = ${role || null},
-        image_url = ${imageUrl || null}
-      WHERE id = ${params.id}
-      RETURNING *
-    `
+    await sql(
+      `UPDATE employees
+       SET employee_id = ?, name = ?, email = ?, date_of_birth = ?, gender = ?, marital_status = ?, designation = ?, department_id = ?, salary = ?, role = ?, image_url = ?, password = ?
+       WHERE id = ?`,
+      [
+        employeeId,
+        name,
+        email,
+        dateOfBirth || null,
+        gender || null,
+        maritalStatus || null,
+        designation || null,
+        departmentId || null,
+        salary || null,
+        role || null,
+        imageUrl || null,
+        password || null,
+        params.id
+      ]
+    );
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 })
-    }
-
-    return NextResponse.json(result[0])
+    const [updatedEmployee]: any = await sql("SELECT * FROM employees WHERE id = ?", [params.id]);
+    return NextResponse.json(updatedEmployee);
   } catch (error) {
-    return NextResponse.json({ error: handleDbError(error) }, { status: 500 })
+    return NextResponse.json({ error: handleDbError(error) }, { status: 500 });
   }
 }
 
 // DELETE employee
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const result = await sql`
-      DELETE FROM employees
-      WHERE id = ${params.id}
-      RETURNING id
-    `
+    const result: any = await sql("DELETE FROM employees WHERE id = ?", [params.id]);
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 })
+    if (result.affectedRows === 0) {
+      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: handleDbError(error) }, { status: 500 })
+    return NextResponse.json({ error: handleDbError(error) }, { status: 500 });
   }
 }

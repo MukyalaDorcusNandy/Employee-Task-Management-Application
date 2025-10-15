@@ -5,11 +5,72 @@
 "use client"
 
 import { Search, SlidersHorizontal } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "./ui/input"
+import { Button } from "./ui/button"
+import React, { createContext, useContext, useState, ReactNode, isValidElement, cloneElement } from "react"
+
+type PopoverContextType = {
+  open: boolean
+  setOpen: (open: boolean) => void
+}
+
+const PopoverContext = createContext<PopoverContextType | undefined>(undefined)
+
+/**
+ * Minimal Popover implementation used locally to avoid a missing module error.
+ * This replicates the small API used by the component: <Popover>, <PopoverTrigger asChild>, <PopoverContent>.
+ */
+export function Popover({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false)
+  return <PopoverContext.Provider value={{ open, setOpen }}>{children}</PopoverContext.Provider>
+}
+
+export function PopoverTrigger({
+  children,
+  asChild = false,
+}: {
+  children: ReactNode
+  asChild?: boolean
+}) {
+  const ctx = useContext(PopoverContext)
+  if (!ctx) return null
+
+  const handleToggle = (e?: any) => {
+    ctx.setOpen(!ctx.open)
+  }
+
+  if (asChild && isValidElement(children)) {
+    // Clone the child and attach an onClick that toggles the popover, preserving existing onClick.
+    return cloneElement(children as any, {
+      onClick: (e: any) => {
+        const orig = (children as any).props.onClick
+        orig && orig(e)
+        handleToggle(e)
+      },
+    })
+  }
+
+  return <button onClick={handleToggle}>{children}</button>
+}
+
+export function PopoverContent({
+  children,
+  className,
+  align,
+}: {
+  children: ReactNode
+  className?: string
+  align?: string
+}) {
+  const ctx = useContext(PopoverContext)
+  if (!ctx) return null
+  if (!ctx.open) return null
+
+  // Very small helper: render content only when open; styling is driven by provided className.
+  return <div className={className} data-align={align}>{children}</div>
+}
+import { Label } from "./ui/label"
+import { Checkbox } from "./ui/checkbox"
 
 interface SearchFilterProps {
   searchQuery: string
@@ -55,7 +116,7 @@ export function SearchFilter({
 
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="icon" className="h-10 w-10 relative bg-transparent">
+          <Button variant="outline" size="sm" className="h-10 w-10 relative bg-transparent">
             <SlidersHorizontal className="h-4 w-4" />
             {hasActiveFilters && (
               <span className="absolute -top-1 -right-1 h-3 w-3 bg-primary rounded-full border-2 border-background" />

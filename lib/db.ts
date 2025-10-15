@@ -1,20 +1,22 @@
-import mysql from 'mysql2/promise';
+// lib/db.ts
+import mysql from "mysql2/promise";
 
-const dbConfig = {
-  host: 'localhost',
-  user: 'root',
-  password: '', // Empty password for XAMPP
-  database: 'employee_management'
-};
+export const pool = mysql.createPool({
+  host: "localhost",
+  user: "root",
+  password: "", // XAMPP default
+  database: "employee_management",
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+});
 
-export async function query(sql: string, params: any[] = []) {
-  const connection = await mysql.createConnection(dbConfig);
-  try {
-    const [results] = await connection.execute(sql, params);
-    return results;
-  } finally {
-    await connection.end();
-  }
+export async function sql(query: string, params: any[] = []) {
+  const [rows] = await pool.execute(query, params);
+  return rows;
 }
 
-export default dbConfig;
+export function handleDbError(error: unknown) {
+  console.error(error);
+  return error instanceof Error ? error.message : String(error);
+}

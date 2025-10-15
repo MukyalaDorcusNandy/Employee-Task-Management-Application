@@ -1,169 +1,222 @@
+// app/dashboard/attendance/page.tsx
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Check, X } from "lucide-react"
-import type { Employee, Attendance } from "@/lib/types/employee"
+import type { Employee, Attendance as AttendanceType } from "@/lib/types/employee"
 
 export default function AttendancePage() {
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [attendance, setAttendance] = useState<Attendance[]>([])
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0])
-  const [loading, setLoading] = useState(true)
+  const [selectedDate, setSelectedDate] = useState("2025-01-14")
 
-  useEffect(() => {
-    fetchEmployees()
-  }, [])
-
-  useEffect(() => {
-    fetchAttendance()
-  }, [selectedDate])
-
-  const fetchEmployees = async () => {
-    try {
-      const response = await fetch("/api/employees")
-      const data = await response.json()
-      setEmployees(data)
-    } catch (error) {
-      console.error("[v0] Error fetching employees:", error)
-    } finally {
-      setLoading(false)
+  // Mock data using your proper types
+  const employees: Employee[] = [
+    {
+      id: 1,
+      employeeId: "EMP001",
+      name: "John Doe",
+      email: "john.doe@company.com",
+      designation: "Senior Developer",
+      departmentId: 1,
+      department: { id: 1, name: "Engineering", createdAt: "2024-01-01" },
+      salary: 75000,
+      role: "Developer",
+      createdAt: "2024-01-15",
+      department_name: "",
+      employee_id: ""
+    },
+    {
+      id: 2,
+      employeeId: "EMP002",
+      name: "Jane Smith",
+      email: "jane.smith@company.com",
+      designation: "UI/UX Designer",
+      departmentId: 2,
+      department: { id: 2, name: "Design", createdAt: "2024-01-01" },
+      salary: 65000,
+      role: "Designer",
+      createdAt: "2024-02-01",
+      department_name: "",
+      employee_id: ""
+    },
+    {
+      id: 3,
+      employeeId: "EMP003",
+      name: "Mike Johnson",
+      email: "mike.johnson@company.com",
+      designation: "Operations Manager",
+      departmentId: 3,
+      department: { id: 3, name: "Operations", createdAt: "2024-01-01" },
+      salary: 85000,
+      role: "Manager",
+      createdAt: "2024-01-10",
+      department_name: "",
+      employee_id: ""
+    },
+    {
+      id: 4,
+      employeeId: "EMP004",
+      name: "Sarah Wilson",
+      email: "sarah.wilson@company.com",
+      designation: "HR Specialist",
+      departmentId: 4,
+      department: { id: 4, name: "Human Resources", createdAt: "2024-01-01" },
+      salary: 60000,
+      role: "HR",
+      createdAt: "2024-03-01",
+      department_name: "",
+      employee_id: ""
     }
-  }
+  ]
 
-  const fetchAttendance = async () => {
-    try {
-      const response = await fetch(`/api/attendance?date=${selectedDate}`)
-      const data = await response.json()
-      setAttendance(data)
-    } catch (error) {
-      console.error("[v0] Error fetching attendance:", error)
+  const attendanceRecords: AttendanceType[] = [
+    { 
+      id: 1, 
+      employeeId: 1, 
+      employee: employees[0],
+      date: "2025-01-14", 
+      status: "present", 
+      checkIn: "09:00", 
+      checkOut: "17:00",
+      createdAt: "2025-01-14T08:55:00Z"
+    },
+    { 
+      id: 2, 
+      employeeId: 2, 
+      employee: employees[1],
+      date: "2025-01-14", 
+      status: "absent",
+      createdAt: "2025-01-14T00:00:00Z"
+    },
+    { 
+      id: 3, 
+      employeeId: 3, 
+      employee: employees[2],
+      date: "2025-01-14", 
+      status: "late", 
+      checkIn: "10:30", 
+      checkOut: "18:00",
+      createdAt: "2025-01-14T10:25:00Z"
+    },
+    { 
+      id: 4, 
+      employeeId: 4, 
+      employee: employees[3],
+      date: "2025-01-14", 
+      status: "present", 
+      checkIn: "08:45", 
+      checkOut: "17:15",
+      createdAt: "2025-01-14T08:40:00Z"
     }
-  }
+  ]
 
-  const markAttendance = async (employeeId: number, status: string) => {
-    try {
-      const now = new Date()
-      const time = now.toTimeString().split(" ")[0]
-
-      await fetch("/api/attendance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employeeId,
-          date: selectedDate,
-          checkIn: status === "present" ? time : null,
-          status,
-        }),
-      })
-
-      fetchAttendance()
-    } catch (error) {
-      console.error("[v0] Error marking attendance:", error)
-    }
-  }
-
-  const getAttendanceStatus = (employeeId: number) => {
-    const record = attendance.find((a: any) => a.employee_id === employeeId)
-    return record?.status || null
-  }
-
-  const getStatusBadge = (status: string | null) => {
-    if (!status) return <Badge variant="outline">Not Marked</Badge>
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case "present":
-        return <Badge className="bg-green-500 hover:bg-green-600">Present</Badge>
-      case "absent":
-        return <Badge className="bg-red-500 hover:bg-red-600">Absent</Badge>
-      case "late":
-        return <Badge className="bg-yellow-500 hover:bg-yellow-600">Late</Badge>
-      default:
-        return <Badge variant="outline">{status}</Badge>
+      case "present": 
+        return <Badge variant="success">Present</Badge>
+      case "absent": 
+        return <Badge variant="destructive">Absent</Badge>
+      case "late": 
+        return <Badge variant="warning">Late</Badge>
+      default: 
+        return <Badge>{status}</Badge>
     }
   }
 
-  if (loading) {
-    return <div className="text-center py-12">Loading attendance...</div>
+  const getEmployeeRecord = (employeeId: number) => {
+    return attendanceRecords.find(record => record.employeeId === employeeId)
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold text-foreground">Attendance Management</h1>
-      </div>
-
-      {/* Date Selector */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-5 w-5 text-muted-foreground" />
-          <Input
-            type="date"
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Attendance Management</h1>
+        <div className="flex gap-4">
+          <Input 
+            type="date" 
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            className="w-auto"
           />
-        </div>
-        <div className="text-sm text-muted-foreground">
-          {attendance.length} of {employees.length} marked
+          <Button>Export Report</Button>
         </div>
       </div>
 
-      {/* Attendance Table */}
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Employee ID</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Department</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Status</th>
-                <th className="px-6 py-3 text-right text-sm font-medium text-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {employees.map((employee: any) => {
-                const status = getAttendanceStatus(employee.id)
-                return (
-                  <tr key={employee.id} className="hover:bg-muted/30">
-                    <td className="px-6 py-4 text-sm text-foreground">{employee.employee_id}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-foreground">{employee.name}</td>
-                    <td className="px-6 py-4 text-sm text-foreground">{employee.department_name || "-"}</td>
-                    <td className="px-6 py-4 text-sm">{getStatusBadge(status)}</td>
-                    <td className="px-6 py-4 text-right text-sm">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => markAttendance(employee.id, "present")}
-                          className="text-green-600 hover:text-green-700 gap-1"
-                          disabled={status === "present"}
-                        >
-                          <Check className="h-4 w-4" />
-                          Present
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => markAttendance(employee.id, "absent")}
-                          className="text-red-600 hover:text-red-700 gap-1"
-                          disabled={status === "absent"}
-                        >
-                          <X className="h-4 w-4" />
-                          Absent
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check In</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Check Out</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {employees.map((employee) => {
+              const record = getEmployeeRecord(employee.id)
+              return (
+                <tr key={employee.id}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{employee.employeeId}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{employee.name}</div>
+                    <div className="text-sm text-gray-500">{employee.designation}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-500">{employee.department?.name}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {record ? getStatusBadge(record.status) : <Badge variant="outline">No Record</Badge>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {record?.checkIn || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {record?.checkOut || "-"}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">Edit</Button>
+                      <Button variant="ghost" size="sm">View</Button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
 
-        {employees.length === 0 && <div className="text-center py-12 text-muted-foreground">No employees found</div>}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+          <div className="text-2xl font-bold text-green-600">
+            {attendanceRecords.filter(r => r.status === 'present').length}
+          </div>
+          <div className="text-sm text-green-800">Present Today</div>
+        </div>
+        <div className="bg-red-50 p-4 rounded-lg border border-red-200">
+          <div className="text-2xl font-bold text-red-600">
+            {attendanceRecords.filter(r => r.status === 'absent').length}
+          </div>
+          <div className="text-sm text-red-800">Absent Today</div>
+        </div>
+        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+          <div className="text-2xl font-bold text-yellow-600">
+            {attendanceRecords.filter(r => r.status === 'late').length}
+          </div>
+          <div className="text-sm text-yellow-800">Late Today</div>
+        </div>
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div className="text-2xl font-bold text-blue-600">
+            {Math.round((attendanceRecords.filter(r => r.status === 'present').length / employees.length) * 100)}%
+          </div>
+          <div className="text-sm text-blue-800">Attendance Rate</div>
+        </div>
       </div>
     </div>
   )

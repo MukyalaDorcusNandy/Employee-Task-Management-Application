@@ -1,51 +1,38 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { sql, handleDbError } from "@/lib/db"
+import { NextResponse } from "next/server"
 
-// GET attendance records
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url)
-    const date = searchParams.get("date") || new Date().toISOString().split("T")[0]
-
-    const attendance = await sql`
-      SELECT 
-        a.*,
-        e.name as employee_name,
-        e.employee_id as employee_code
-      FROM attendance a
-      LEFT JOIN employees e ON a.employee_id = e.id
-      WHERE a.date = ${date}
-      ORDER BY e.name ASC
-    `
-
-    return NextResponse.json(attendance)
+    // Mock data for now - you can replace with database later
+    const mockAttendance = [
+      {
+        id: 1,
+        employeeId: 1,
+        employeeName: "John Doe",
+        date: "2024-01-15",
+        checkIn: "08:15",
+        checkOut: "17:30",
+        status: "Present",
+        department: "IT"
+      },
+      {
+        id: 2,
+        employeeId: 2,
+        employeeName: "Jane Smith",
+        date: "2024-01-15",
+        checkIn: "08:45",
+        checkOut: "17:15",
+        status: "Late",
+        department: "HR"
+      }
+    ]
+    
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return NextResponse.json(mockAttendance)
   } catch (error) {
-    return NextResponse.json({ error: handleDbError(error) }, { status: 500 })
-  }
-}
-
-// POST mark attendance
-export async function POST(request: NextRequest) {
-  try {
-    const { employeeId, date, checkIn, checkOut, status } = await request.json()
-
-    if (!employeeId || !date) {
-      return NextResponse.json({ error: "Employee ID and date are required" }, { status: 400 })
-    }
-
-    const result = await sql`
-      INSERT INTO attendance (employee_id, date, check_in, check_out, status)
-      VALUES (${employeeId}, ${date}, ${checkIn || null}, ${checkOut || null}, ${status || "present"})
-      ON CONFLICT (employee_id, date) 
-      DO UPDATE SET 
-        check_in = EXCLUDED.check_in,
-        check_out = EXCLUDED.check_out,
-        status = EXCLUDED.status
-      RETURNING *
-    `
-
-    return NextResponse.json(result[0], { status: 201 })
-  } catch (error) {
-    return NextResponse.json({ error: handleDbError(error) }, { status: 500 })
+    console.error("Error fetching attendance:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch attendance" },
+      { status: 500 }
+    )
   }
 }

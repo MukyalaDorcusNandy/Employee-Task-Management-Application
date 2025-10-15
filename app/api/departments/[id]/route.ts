@@ -1,65 +1,110 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sql, handleDbError } from "@/lib/db"
+import { query } from "@/lib/db"
 
 // GET single department
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const result = await sql`
-      SELECT * FROM departments
-      WHERE id = ${params.id}
-    `
+    const departments: any = await query(
+      "SELECT id, name, description, created_at, updated_at FROM departments WHERE id = ?",
+      [params.id]
+    )
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: "Department not found" }, { status: 404 })
+    if (departments.length === 0) {
+      return NextResponse.json(
+        { error: "Department not found" },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json(result[0])
-  } catch (error) {
-    return NextResponse.json({ error: handleDbError(error) }, { status: 500 })
+    return NextResponse.json(departments[0])
+  } catch (error: any) {
+    console.error("GET department error:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch department" },
+      { status: 500 }
+    )
   }
 }
 
 // PUT update department
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const { name, description } = await request.json()
 
-    if (!name) {
-      return NextResponse.json({ error: "Department name is required" }, { status: 400 })
+    if (!name || name.trim() === '') {
+      return NextResponse.json(
+        { error: "Department name is required" },
+        { status: 400 }
+      )
     }
 
-    const result = await sql`
-      UPDATE departments
-      SET name = ${name}, description = ${description || null}
-      WHERE id = ${params.id}
-      RETURNING *
-    `
+    const result: any = await query(
+      "UPDATE departments SET name = ?, description = ? WHERE id = ?",
+      [name.trim(), description?.trim() || null, params.id]
+    )
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: "Department not found" }, { status: 404 })
+    // Check if any rows were affected
+    if (result.affectedRows === 0) {
+      return NextResponse.json(
+        { error: "Department not found" },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json(result[0])
-  } catch (error) {
-    return NextResponse.json({ error: handleDbError(error) }, { status: 500 })
+    // Fetch the updated department - FIXED THIS PART
+    const departments: any = await query(
+      "SELECT id, name, description, created_at, updated_at FROM departments WHERE id = ?",
+      [params.id]
+    )
+
+    return NextResponse.json(departments[0])
+  } catch (error: any) {
+    console.error("PUT department error:", error)
+    
+    if (error.code === 'ER_DUP_ENTRY') {
+      return NextResponse.json(
+        { error: "A department with this name already exists" },
+        { status: 409 }
+      )
+    }
+    
+    return NextResponse.json(
+      { error: "Failed to update department" },
+      { status: 500 }
+    )
   }
 }
 
 // DELETE department
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const result = await sql`
-      DELETE FROM departments
-      WHERE id = ${params.id}
-      RETURNING id
-    `
+    const result: any = await query(
+      "DELETE FROM departments WHERE id = ?",
+      [params.id]
+    )
 
-    if (result.length === 0) {
-      return NextResponse.json({ error: "Department not found" }, { status: 404 })
+    if (result.affectedRows === 0) {
+      return NextResponse.json(
+        { error: "Department not found" },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    return NextResponse.json({ error: handleDbError(error) }, { status: 500 })
+    return NextResponse.json({ message: "Department deleted successfully" })
+  } catch (error: any) {
+    console.error("DELETE department error:", error)
+    return NextResponse.json(
+      { error: "Failed to delete department" },
+      { status: 500 }
+    )
   }
 }
