@@ -1,13 +1,20 @@
-import { neon } from "@neondatabase/serverless"
+import mysql from 'mysql2/promise';
 
-// Initialize Neon database connection
-export const sql = neon(process.env.DATABASE_URL!)
+const dbConfig = {
+  host: 'localhost',
+  user: 'root',
+  password: '', // Empty password for XAMPP
+  database: 'employee_management'
+};
 
-// Helper function to handle database errors
-export function handleDbError(error: unknown): string {
-  console.error("[v0] Database error:", error)
-  if (error instanceof Error) {
-    return error.message
+export async function query(sql: string, params: any[] = []) {
+  const connection = await mysql.createConnection(dbConfig);
+  try {
+    const [results] = await connection.execute(sql, params);
+    return results;
+  } finally {
+    await connection.end();
   }
-  return "An unknown database error occurred"
 }
+
+export default dbConfig;

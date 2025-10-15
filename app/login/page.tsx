@@ -1,161 +1,268 @@
 "use client"
 
-import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [rememberMe, setRememberMe] = useState(false)
-  const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError("")
     setLoading(true)
-
-    // Simulate login for now - you can add real authentication later
+    
     setTimeout(() => {
       router.push("/dashboard")
     }, 1000)
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column',
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    }}>
       {/* Header */}
-      <div className="bg-cyan-600 py-6 px-4 shadow-md">
-        <h1 className="text-center text-3xl font-bold text-white">
+      <div style={{ 
+        background: 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)',
+        padding: '2rem',
+        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+      }}>
+        <h1 style={{ 
+          textAlign: 'center', 
+          fontSize: '2rem', 
+          fontWeight: 'bold', 
+          color: 'white',
+          margin: 0
+        }}>
           Employee Management System
         </h1>
       </div>
 
-      {/* Main Content - Centered */}
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 px-4 py-12">
-        <div className="w-full max-w-md">
+      {/* Centered Login Form */}
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        padding: '2rem'
+      }}>
+        <div style={{ width: '100%', maxWidth: '450px' }}>
           {/* Login Card */}
-          <div className="bg-white rounded-xl shadow-2xl p-8 space-y-6">
+          <div style={{ 
+            background: 'white',
+            borderRadius: '16px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            padding: '3rem',
+          }}>
             {/* Title */}
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-800">Welcome Back</h2>
-              <p className="text-gray-500 text-sm mt-2">Sign in to continue to your account</p>
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <h2 style={{ 
+                fontSize: '1.875rem', 
+                fontWeight: 'bold', 
+                color: '#1f2937',
+                marginBottom: '0.5rem'
+              }}>
+                Welcome Back
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                Sign in to continue to your account
+              </p>
             </div>
 
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Email Field */}
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-gray-700 font-medium">
+            <form onSubmit={handleSubmit}>
+              {/* Email */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label 
+                  htmlFor="email" 
+                  style={{ 
+                    display: 'block', 
+                    fontSize: '0.875rem', 
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '0.5rem'
+                  }}
+                >
                   Email Address
-                </Label>
-                <Input
+                </label>
+                <input
                   id="email"
                   type="email"
-                  placeholder="Enter your email"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full h-11 px-4 border-gray-300 focus:border-cyan-500 focus:ring-cyan-500"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    fontSize: '1rem',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#0891b2'}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                 />
               </div>
 
-              {/* Password Field */}
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700 font-medium">
+              {/* Password */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label 
+                  htmlFor="password"
+                  style={{ 
+                    display: 'block', 
+                    fontSize: '0.875rem', 
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '0.5rem'
+                  }}
+                >
                   Password
-                </Label>
-                <Input
+                </label>
+                <input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full h-11 px-4 border-gray-300 focus:border-cyan-500 focus:ring-cyan-500"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    fontSize: '1rem',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    transition: 'all 0.2s'
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#0891b2'}
+                  onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                 />
               </div>
 
               {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Checkbox
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '1.5rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
                     id="remember"
                     checked={rememberMe}
-                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ 
+                      width: '16px', 
+                      height: '16px',
+                      cursor: 'pointer',
+                      accentColor: '#0891b2'
+                    }}
                   />
-                  <Label 
+                  <label 
                     htmlFor="remember" 
-                    className="text-sm text-gray-600 cursor-pointer hover:text-gray-800"
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      color: '#4b5563',
+                      cursor: 'pointer'
+                    }}
                   >
                     Remember me
-                  </Label>
+                  </label>
                 </div>
                 <button 
-                  type="button" 
-                  className="text-sm text-cyan-600 hover:text-cyan-700 hover:underline font-medium"
+                  type="button"
+                  style={{ 
+                    fontSize: '0.875rem', 
+                    color: '#0891b2',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textDecoration: 'underline'
+                  }}
                 >
                   Forgot password?
                 </button>
               </div>
 
-              {/* Login Button */}
-              <Button
+              {/* Sign In Button */}
+              <button
                 type="submit"
                 disabled={loading}
-                className="w-full h-11 bg-cyan-600 hover:bg-cyan-700 text-white font-medium text-base shadow-md hover:shadow-lg transition-all duration-200"
+                style={{
+                  width: '100%',
+                  padding: '0.875rem',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  color: 'white',
+                  background: loading ? '#06b6d4' : 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 6px rgba(8, 145, 178, 0.3)',
+                  transition: 'all 0.3s',
+                  opacity: loading ? 0.7 : 1
+                }}
+                onMouseOver={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow = '0 8px 12px rgba(8, 145, 178, 0.4)'
+                  }
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)'
+                  e.currentTarget.style.boxShadow = '0 4px 6px rgba(8, 145, 178, 0.3)'
+                }}
               >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Signing in...
-                  </span>
-                ) : (
-                  "Sign In"
-                )}
-              </Button>
+                {loading ? 'Signing in...' : 'Sign In'}
+              </button>
             </form>
 
             {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-gray-500">New to the platform?</span>
-              </div>
+            <div style={{ margin: '2rem 0', position: 'relative', textAlign: 'center' }}>
+              <div style={{ 
+                position: 'absolute', 
+                top: '50%', 
+                left: 0, 
+                right: 0, 
+                borderTop: '1px solid #e5e7eb' 
+              }}></div>
+              <span style={{ 
+                position: 'relative', 
+                background: 'white', 
+                padding: '0 1rem',
+                fontSize: '0.875rem',
+                color: '#6b7280'
+              }}>
+                New to the platform?
+              </span>
             </div>
 
-            {/* Sign Up Link */}
-            <div className="text-center">
+            {/* Create Account */}
+            <div style={{ textAlign: 'center' }}>
               <button 
                 type="button"
-                className="text-cyan-600 hover:text-cyan-700 font-medium hover:underline"
+                style={{ 
+                  color: '#0891b2',
+                  fontWeight: '600',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  fontSize: '0.95rem'
+                }}
               >
                 Create an account
               </button>
             </div>
           </div>
-
-          {/* Footer Text */}
-          <p className="text-center text-gray-500 text-sm mt-6">
-            © 2025 Employee Management System. All rights reserved.
-          </p>
         </div>
       </div>
     </div>
