@@ -31,8 +31,8 @@ export default function EmployeeLoginPage() {
         localStorage.setItem("employee", JSON.stringify(data.user))
         localStorage.setItem("userType", "employee")
         
-        // Redirect to employee dashboard
-        router.push("/dashboard/employee")
+        // Redirect to employee portal
+        router.push("/dashboard/employees/portal")
       } else {
         setError(data.error || "Invalid email or password")
       }
@@ -45,7 +45,7 @@ export default function EmployeeLoginPage() {
 
   const fillDemoCredentials = () => {
     setEmail("john@company.com")
-    setPassword("123456")
+    setPassword("password123")
   }
 
   return (
@@ -240,7 +240,7 @@ export default function EmployeeLoginPage() {
                 Demo Employee credentials:
               </p>
               <p style={{ margin: '0 0 12px 0', fontSize: '0.875rem', color: '#047857' }}>
-                john@company.com / 123456
+                john@company.com / password123
               </p>
               <button
                 onClick={fillDemoCredentials}

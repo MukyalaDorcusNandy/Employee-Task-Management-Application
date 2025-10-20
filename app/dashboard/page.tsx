@@ -32,6 +32,19 @@ interface Attendance {
   department: string
 }
 
+interface Task {
+  id: number
+  title: string
+  description: string
+  status: 'todo' | 'in_progress' | 'completed'
+  priority: 'low' | 'medium' | 'high'
+  due_date: string
+  created_by_name: string
+  assigned_to_name: string
+  department_name: string
+  created_at: string
+}
+
 export default function Dashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -39,6 +52,7 @@ export default function Dashboard() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [departments, setDepartments] = useState<Department[]>([])
   const [attendance, setAttendance] = useState<Attendance[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
   const [showAddEmployee, setShowAddEmployee] = useState(false)
   const [newEmployee, setNewEmployee] = useState({
     name: "",
@@ -49,34 +63,54 @@ export default function Dashboard() {
     joinDate: ""
   })
 
-  // Mock data - In real app, this would come from API
+  // Fetch real data from APIs
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setEmployees([
-        { id: 1, name: "John Doe", email: "john@company.com", department: "IT", position: "Software Engineer", salary: 75000, joinDate: "2023-01-15" },
-        { id: 2, name: "Jane Smith", email: "jane@company.com", department: "HR", position: "HR Manager", salary: 65000, joinDate: "2023-02-20" },
-        { id: 3, name: "Robert Johnson", email: "robert@company.com", department: "Finance", position: "Accountant", salary: 60000, joinDate: "2023-03-10" },
-        { id: 4, name: "Sarah Williams", email: "sarah@company.com", department: "Marketing", position: "Marketing Manager", salary: 70000, joinDate: "2023-01-08" }
-      ])
+    const fetchData = async () => {
+      try {
+        // Fetch employees
+        const employeesResponse = await fetch('/api/employees')
+        const employeesData = await employeesResponse.json()
+        setEmployees(Array.isArray(employeesData) ? employeesData.map(emp => ({
+          id: emp.id,
+          name: emp.name,
+          email: emp.email,
+          department: emp.department_name || 'Unknown',
+          position: emp.designation || 'Staff',
+          salary: emp.salary || 0,
+          joinDate: emp.created_at ? new Date(emp.created_at).toISOString().split('T')[0] : '2023-01-01'
+        })) : [])
 
-      setDepartments([
-        { id: 1, name: "Information Technology", manager: "Michael Brown", employeeCount: 25 },
-        { id: 2, name: "Human Resources", manager: "Jane Smith", employeeCount: 12 },
-        { id: 3, name: "Finance", manager: "Robert Johnson", employeeCount: 18 },
-        { id: 4, name: "Marketing", manager: "Sarah Williams", employeeCount: 15 }
-      ])
+        // Fetch departments
+        const departmentsResponse = await fetch('/api/departments')
+        const departmentsData = await departmentsResponse.json()
+        setDepartments(Array.isArray(departmentsData) ? departmentsData.map(dept => ({
+          id: dept.id,
+          name: dept.name,
+          manager: 'Manager', // You might want to add manager field to departments table
+          employeeCount: employeesData ? employeesData.filter(emp => emp.department_id === dept.id).length : 0
+        })) : [])
 
-      setAttendance([
-        { id: 1, employeeId: 1, employeeName: "John Doe", date: "2024-01-15", checkIn: "08:15", checkOut: "17:30", status: "Present", department: "IT" },
-        { id: 2, employeeId: 2, employeeName: "Jane Smith", date: "2024-01-15", checkIn: "08:45", checkOut: "17:15", status: "Late", department: "HR" },
-        { id: 3, employeeId: 3, employeeName: "Robert Johnson", date: "2024-01-15", checkIn: "09:00", checkOut: "17:45", status: "Late", department: "Finance" },
-        { id: 4, employeeId: 4, employeeName: "Sarah Williams", date: "2024-01-15", checkIn: "08:30", checkOut: "17:00", status: "Present", department: "Marketing" }
-      ])
+        // Fetch tasks
+        const tasksResponse = await fetch('/api/tasks')
+        const tasksData = await tasksResponse.json()
+        setTasks(Array.isArray(tasksData) ? tasksData : [])
 
-      setLoading(false)
-    }, 1000)
+        // Mock attendance data for now (you can create an attendance API later)
+        setAttendance([
+          { id: 1, employeeId: 1, employeeName: "John Dan", date: "2024-01-15", checkIn: "08:15", checkOut: "17:30", status: "Present", department: "IT" },
+          { id: 2, employeeId: 2, employeeName: "Jane hildah", date: "2024-01-15", checkIn: "08:45", checkOut: "17:15", status: "Late", department: "HR" },
+          { id: 3, employeeId: 3, employeeName: "Mikel Johnson", date: "2024-01-15", checkIn: "09:00", checkOut: "17:45", status: "Late", department: "Finance" },
+          { id: 4, employeeId: 4, employeeName: "Sarah Willian", date: "2024-01-15", checkIn: "08:30", checkOut: "17:00", status: "Present", department: "IT" }
+        ])
 
-    return () => clearTimeout(timer)
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
   }, [])
 
   const handleLogout = () => {
@@ -158,6 +192,7 @@ export default function Dashboard() {
     { id: "attendance", label: "Attendance", icon: "📅", path: "/dashboard/attendance" },
     { id: "employees", label: "Employees", icon: "👥", path: "/dashboard/employees" },
     { id: "departments", label: "Departments", icon: "🏢", path: "/dashboard/departments" },
+    { id: "tasks", label: "Tasks", icon: "✅", path: "/dashboard/tasks" },
     { id: "leaves", label: "Leaves", icon: "🏖️", path: "/dashboard/leaves" },
     { id: "salary", label: "Salary", icon: "💰", path: "/dashboard/salary" },
     { id: "settings", label: "Settings", icon: "⚙️", path: "/dashboard/settings" }
@@ -338,13 +373,55 @@ export default function Dashboard() {
                   border: '1px solid #e5e7eb'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#374151' }}>Pending Leaves</h3>
-                    <span style={{ fontSize: '1.5rem' }}>📋</span>
+                    <h3 style={{ fontSize: '1rem', fontWeight: '600', color: '#374151' }}>Active Tasks</h3>
+                    <span style={{ fontSize: '1.5rem' }}>✅</span>
                   </div>
                   <div style={{ fontSize: '2rem', fontWeight: '700', color: '#111827', marginBottom: '0.5rem' }}>
-                    12
+                    {tasks.filter(task => task.status === 'in_progress').length}
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Require approval</div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    {tasks.filter(task => task.status === 'todo').length} pending, {tasks.filter(task => task.status === 'completed').length} completed
+                  </div>
+                </div>
+              </div>
+
+              {/* Task Overview */}
+              <div style={{ 
+                backgroundColor: 'white',
+                padding: '1.5rem',
+                borderRadius: '12px',
+                boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+                border: '1px solid #e5e7eb',
+                marginBottom: '1.5rem'
+              }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
+                  Task Overview
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  <div style={{ textAlign: 'center', padding: '1rem', backgroundColor: '#f3f4f6', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: '700', color: '#374151' }}>
+                      {tasks.filter(task => task.status === 'todo').length}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>To Do</div>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '1rem', backgroundColor: '#dbeafe', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: '700', color: '#1e40af' }}>
+                      {tasks.filter(task => task.status === 'in_progress').length}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#1e40af' }}>In Progress</div>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '1rem', backgroundColor: '#dcfce7', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: '700', color: '#166534' }}>
+                      {tasks.filter(task => task.status === 'completed').length}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#166534' }}>Completed</div>
+                  </div>
+                  <div style={{ textAlign: 'center', padding: '1rem', backgroundColor: '#fef3c7', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '2rem', fontWeight: '700', color: '#92400e' }}>
+                      {tasks.filter(task => task.priority === 'high').length}
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: '#92400e' }}>High Priority</div>
+                  </div>
                 </div>
               </div>
 
@@ -357,33 +434,58 @@ export default function Dashboard() {
                 border: '1px solid #e5e7eb'
               }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827', marginBottom: '1rem' }}>
-                  Recent Activities
+                  Recent Task Activities
                 </h3>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                        <th style={{ textAlign: 'left', padding: '12px', fontWeight: '600', color: '#374151' }}>Employee</th>
-                        <th style={{ textAlign: 'left', padding: '12px', fontWeight: '600', color: '#374151' }}>Activity</th>
-                        <th style={{ textAlign: 'left', padding: '12px', fontWeight: '600', color: '#374151' }}>Time</th>
+                        <th style={{ textAlign: 'left', padding: '12px', fontWeight: '600', color: '#374151' }}>Task</th>
+                        <th style={{ textAlign: 'left', padding: '12px', fontWeight: '600', color: '#374151' }}>Assigned To</th>
+                        <th style={{ textAlign: 'left', padding: '12px', fontWeight: '600', color: '#374151' }}>Status</th>
+                        <th style={{ textAlign: 'left', padding: '12px', fontWeight: '600', color: '#374151' }}>Priority</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '12px' }}>John Doe</td>
-                        <td style={{ padding: '12px' }}>Checked in</td>
-                        <td style={{ padding: '12px' }}>08:15 AM</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '12px' }}>Jane Smith</td>
-                        <td style={{ padding: '12px' }}>Applied for leave</td>
-                        <td style={{ padding: '12px' }}>09:30 AM</td>
-                      </tr>
-                      <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                        <td style={{ padding: '12px' }}>Robert Johnson</td>
-                        <td style={{ padding: '12px' }}>Updated profile</td>
-                        <td style={{ padding: '12px' }}>10:45 AM</td>
-                      </tr>
+                      {tasks.slice(0, 5).map((task) => (
+                        <tr key={task.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '12px' }}>
+                            <div style={{ fontWeight: '600', color: '#111827' }}>{task.title}</div>
+                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                              {task.description ? (task.description.length > 50 ? task.description.substring(0, 50) + '...' : task.description) : 'No description'}
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px' }}>{task.assigned_to_name || 'Unassigned'}</td>
+                          <td style={{ padding: '12px' }}>
+                            <span style={{
+                              backgroundColor: task.status === 'completed' ? '#dcfce7' : 
+                                             task.status === 'in_progress' ? '#dbeafe' : '#f3f4f6',
+                              color: task.status === 'completed' ? '#166534' : 
+                                     task.status === 'in_progress' ? '#1e40af' : '#374151',
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}>
+                              {task.status.replace('_', ' ')}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px' }}>
+                            <span style={{
+                              backgroundColor: task.priority === 'high' ? '#fee2e2' : 
+                                             task.priority === 'medium' ? '#fef9c3' : '#dcfce7',
+                              color: task.priority === 'high' ? '#991b1b' : 
+                                     task.priority === 'medium' ? '#854d0e' : '#166534',
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}>
+                              {task.priority}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>

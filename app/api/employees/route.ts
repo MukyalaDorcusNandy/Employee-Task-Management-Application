@@ -1,26 +1,33 @@
 import { type NextRequest, NextResponse } from "next/server"
-import dbConfig from "@/lib/db"
-import { Pool } from "pg"
+import mysql from "mysql2/promise"
 
-const pool = new Pool(dbConfig as any)
+const dbConfig = {
+  host: "localhost",
+  user: "root",
+  password: "",
+  database: "employee_management",
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const result = await pool.query(`
+    const connection = await mysql.createConnection(dbConfig)
+    
+    const [rows] = await connection.execute(`
       SELECT 
         id,
-        employee_id as "employeeId",
+        employee_id as employeeId,
         name,
         email,
         department,
         designation,
         salary,
-        join_date as "joinDate"
+        join_date as joinDate
       FROM employees 
       ORDER BY id
     `)
     
-    return NextResponse.json(result.rows)
+    await connection.end()
+    return NextResponse.json(Array.isArray(rows) ? rows : [])
   } catch (error) {
     console.error("Error fetching employees:", error)
     
@@ -55,15 +62,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
+    const connection = await mysql.createConnection(dbConfig)
     
-    const result = await pool.query(
+    const [result] = await connection.execute(
       `INSERT INTO employees (name, email, department, designation, salary, join_date) 
-       VALUES ($1, $2, $3, $4, $5, $6) 
-       RETURNING *`,
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [body.name, body.email, body.department, body.designation, body.salary, body.joinDate]
     )
     
-    return NextResponse.json(result.rows[0], { status: 201 })
+    await connection.end()
+    return NextResponse.json({ id: (result as any).insertId, ...body }, { status: 201 })
   } catch (error) {
     console.error("Error creating employee:", error)
     return NextResponse.json(

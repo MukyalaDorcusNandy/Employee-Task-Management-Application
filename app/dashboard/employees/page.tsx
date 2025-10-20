@@ -1,9 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Plus, Search, Pencil, Trash2, X } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 interface Employee {
   id: number
@@ -17,6 +15,7 @@ interface Employee {
 }
 
 export default function EmployeesPage() {
+  const router = useRouter()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,10 +49,10 @@ export default function EmployeesPage() {
     try {
       const response = await fetch("/api/employees")
       const data = await response.json()
-      setEmployees(data)
-      setFilteredEmployees(data)
+      setEmployees(Array.isArray(data) ? data : [])
+      setFilteredEmployees(Array.isArray(data) ? data : [])
     } catch (error) {
-      console.error("[v0] Error fetching employees:", error)
+      console.error("Error fetching employees:", error)
     } finally {
       setLoading(false)
     }
@@ -63,11 +62,15 @@ export default function EmployeesPage() {
     if (!confirm("Are you sure you want to delete this employee?")) return
 
     try {
-      // Mock delete - in real app, call DELETE API
-      setEmployees(employees.filter(emp => emp.id !== id))
-      setFilteredEmployees(filteredEmployees.filter(emp => emp.id !== id))
+      const response = await fetch(`/api/employees/${id}`, {
+        method: "DELETE",
+      })
+
+      if (response.ok) {
+        fetchEmployees()
+      }
     } catch (error) {
-      console.error("[v0] Error deleting employee:", error)
+      console.error("Error deleting employee:", error)
     }
   }
 
@@ -103,29 +106,36 @@ export default function EmployeesPage() {
     try {
       if (selectedEmployee) {
         // Update existing employee
-        const updatedEmployee = {
-          ...selectedEmployee,
-          ...formData,
-          salary: parseInt(formData.salary)
+        const response = await fetch(`/api/employees/${selectedEmployee.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...formData,
+            salary: parseInt(formData.salary)
+          }),
+        })
+
+        if (response.ok) {
+          fetchEmployees()
         }
-        
-        setEmployees(employees.map(emp => 
-          emp.id === selectedEmployee.id ? updatedEmployee : emp
-        ))
       } else {
         // Add new employee
-        const newEmployee: Employee = {
-          id: employees.length + 1,
-          employeeId: `EMP${String(employees.length + 1).padStart(3, '0')}`,
-          name: formData.name,
-          email: formData.email,
-          department: formData.department,
-          designation: formData.designation,
-          salary: parseInt(formData.salary),
-          joinDate: formData.joinDate
+        const response = await fetch("/api/employees", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...formData,
+            salary: parseInt(formData.salary)
+          }),
+        })
+
+        if (response.ok) {
+          fetchEmployees()
         }
-        
-        setEmployees([...employees, newEmployee])
       }
       
       setDialogOpen(false)
@@ -138,185 +148,548 @@ export default function EmployeesPage() {
         joinDate: ""
       })
     } catch (error) {
-      console.error("[v0] Error saving employee:", error)
+      console.error("Error saving employee:", error)
     }
   }
 
+  const handleLogout = () => {
+    localStorage.removeItem("admin")
+    localStorage.removeItem("userType")
+    router.push("/login")
+  }
+
   if (loading) {
-    return <div className="text-center py-12">Loading employees...</div>
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        backgroundColor: '#f3f4f6', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      }}>
+        <div style={{ fontSize: '1.25rem', color: '#6b7280' }}>Loading employees...</div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-semibold text-foreground">Employees</h1>
-        <Button onClick={handleAdd} className="bg-primary hover:bg-primary/90 gap-2">
-          <Plus className="h-4 w-4" />
-          Add Employee
-        </Button>
-      </div>
-
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search employees..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+    <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', display: 'flex' }}>
+      {/* Sidebar */}
+      <div style={{ 
+        width: '280px',
+        backgroundColor: '#1f2937',
+        color: 'white',
+        height: '100vh',
+        position: 'fixed',
+        overflowY: 'auto'
+      }}>
+        <div style={{ 
+          padding: '2rem 1.5rem',
+          borderBottom: '1px solid #374151',
+          textAlign: 'center'
+        }}>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>Admin Dashboard</h2>
+          <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>Employee Management</p>
         </div>
-      </div>
-
-      <div className="bg-card rounded-lg border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Employee ID</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Name</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Email</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Department</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Designation</th>
-                <th className="px-6 py-3 text-left text-sm font-medium text-foreground">Salary</th>
-                <th className="px-6 py-3 text-right text-sm font-medium text-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredEmployees.map((employee) => (
-                <tr key={employee.id} className="hover:bg-muted/30">
-                  <td className="px-6 py-4 text-sm text-foreground">{employee.employeeId}</td>
-                  <td className="px-6 py-4 text-sm font-medium text-foreground">{employee.name}</td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">{employee.email}</td>
-                  <td className="px-6 py-4 text-sm text-foreground">{employee.department || "-"}</td>
-                  <td className="px-6 py-4 text-sm text-foreground">{employee.designation || "-"}</td>
-                  <td className="px-6 py-4 text-sm text-foreground">
-                    {employee.salary ? `$${employee.salary.toLocaleString()}` : "-"}
-                  </td>
-                  <td className="px-6 py-4 text-right text-sm">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        onClick={() => handleEdit(employee)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDelete(employee.id)}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredEmployees.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            {searchQuery ? "No employees match your search" : "No employees found"}
+        
+        <nav style={{ padding: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <a href="/dashboard" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              backgroundColor: 'transparent', 
+              color: '#d1d5db', 
+              textDecoration: 'none', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}>
+              <span style={{ fontSize: '18px' }}>📊</span>
+              <span>Dashboard</span>
+            </a>
+            <a href="/dashboard/employees" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              backgroundColor: '#374151', 
+              color: 'white', 
+              textDecoration: 'none', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}>
+              <span style={{ fontSize: '18px' }}>👥</span>
+              <span>Employees</span>
+            </a>
+            <a href="/dashboard/departments" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              backgroundColor: 'transparent', 
+              color: '#d1d5db', 
+              textDecoration: 'none', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}>
+              <span style={{ fontSize: '18px' }}>🏢</span>
+              <span>Departments</span>
+            </a>
+            <a href="/dashboard/tasks" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              backgroundColor: 'transparent', 
+              color: '#d1d5db', 
+              textDecoration: 'none', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}>
+              <span style={{ fontSize: '18px' }}>✅</span>
+              <span>Tasks</span>
+            </a>
+            <a href="/dashboard/attendance" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              backgroundColor: 'transparent', 
+              color: '#d1d5db', 
+              textDecoration: 'none', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}>
+              <span style={{ fontSize: '18px' }}>📅</span>
+              <span>Attendance</span>
+            </a>
+            <a href="/dashboard/leaves" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              backgroundColor: 'transparent', 
+              color: '#d1d5db', 
+              textDecoration: 'none', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}>
+              <span style={{ fontSize: '18px' }}>🏖️</span>
+              <span>Leaves</span>
+            </a>
+            <a href="/dashboard/salary" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              backgroundColor: 'transparent', 
+              color: '#d1d5db', 
+              textDecoration: 'none', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}>
+              <span style={{ fontSize: '18px' }}>💰</span>
+              <span>Salary</span>
+            </a>
+            <a href="/dashboard/settings" style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '12px', 
+              padding: '12px 16px', 
+              borderRadius: '8px', 
+              backgroundColor: 'transparent', 
+              color: '#d1d5db', 
+              textDecoration: 'none', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}>
+              <span style={{ fontSize: '18px' }}>⚙️</span>
+              <span>Settings</span>
+            </a>
           </div>
-        )}
+        </nav>
+        
+        <div style={{ padding: '1rem', borderTop: '1px solid #374151', marginTop: 'auto' }}>
+          <button
+            onClick={handleLogout}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              backgroundColor: 'transparent',
+              color: '#d1d5db',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#374151'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+          >
+            <span style={{ fontSize: '18px' }}>🚪</span>
+            <span>Logout</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div style={{ marginLeft: '280px', flex: 1, minHeight: '100vh' }}>
+        {/* Header */}
+        <div style={{ 
+          backgroundColor: 'white',
+          padding: '1.5rem 2rem',
+          borderBottom: '1px solid #e5e7eb',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)'
+        }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center' 
+          }}>
+            <div>
+              <h1 style={{ fontSize: '1.875rem', fontWeight: '700', color: '#111827' }}>
+                Employees
+              </h1>
+              <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>
+                Manage your team members and their information
+              </p>
+            </div>
+            <button 
+              onClick={handleAdd}
+              style={{
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <span style={{ fontSize: '16px' }}>➕</span>
+              <span>Add Employee</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Dashboard Content */}
+        <div style={{ padding: '2rem' }}>
+          {/* Search Bar */}
+          <div style={{ marginBottom: '2rem' }}>
+            <div style={{ position: 'relative', maxWidth: '400px' }}>
+              <span style={{ 
+                position: 'absolute', 
+                left: '12px', 
+                top: '50%', 
+                transform: 'translateY(-50%)', 
+                fontSize: '16px', 
+                color: '#6b7280' 
+              }}>🔍</span>
+              <input
+                placeholder="Search employees..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 0.75rem 0.75rem 2.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  backgroundColor: 'white'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Employees Table */}
+          <div style={{ 
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+            border: '1px solid #e5e7eb',
+            overflow: 'hidden'
+          }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%' }}>
+                <thead style={{ backgroundColor: '#f9fafb' }}>
+                  <tr>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employee ID</th>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Name</th>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Email</th>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department</th>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Designation</th>
+                    <th style={{ padding: '12px 24px', textAlign: 'left', fontSize: '0.75rem', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Salary</th>
+                    <th style={{ padding: '12px 24px', textAlign: 'right', fontSize: '0.75rem', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody style={{ backgroundColor: 'white' }}>
+                  {filteredEmployees.map((employee) => (
+                    <tr key={employee.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: '#111827' }}>{employee.employeeId}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>{employee.name}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: '#6b7280' }}>{employee.email}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: '#111827' }}>{employee.department || "-"}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: '#111827' }}>{employee.designation || "-"}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '0.875rem', color: '#111827' }}>
+                        {employee.salary ? `$${employee.salary.toLocaleString()}` : "-"}
+                      </td>
+                      <td style={{ padding: '16px 24px', textAlign: 'right', fontSize: '0.875rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                          <button 
+                            onClick={() => handleEdit(employee)}
+                            style={{
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              padding: '0.5rem',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              color: '#6b7280',
+                              fontSize: '16px'
+                            }}
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleDelete(employee.id)}
+                            style={{
+                              backgroundColor: 'transparent',
+                              border: 'none',
+                              padding: '0.5rem',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              color: '#ef4444',
+                              fontSize: '16px'
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredEmployees.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+                {searchQuery ? "No employees match your search" : "No employees found"}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Employee Form Modal */}
       {dialogOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#111827' }}>
                 {selectedEmployee ? "Edit Employee" : "Add Employee"}
               </h2>
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={() => setDialogOpen(false)}
-                className="h-8 w-8 p-0"
+                style={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  padding: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  color: '#6b7280'
+                }}
               >
-                <X className="h-4 w-4" />
-              </Button>
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label className="block text-sm font-medium mb-1">Full Name</label>
-                <Input
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>Full Name</label>
+                <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                   required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none'
+                  }}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
-                <Input
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>Email</label>
+                <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                   required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none'
+                  }}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Department</label>
-                <Input
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>Department</label>
+                <input
                   type="text"
                   value={formData.department}
                   onChange={(e) => setFormData({...formData, department: e.target.value})}
                   required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none'
+                  }}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Designation</label>
-                <Input
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>Designation</label>
+                <input
                   type="text"
                   value={formData.designation}
                   onChange={(e) => setFormData({...formData, designation: e.target.value})}
                   required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none'
+                  }}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Salary</label>
-                <Input
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>Salary</label>
+                <input
                   type="number"
                   value={formData.salary}
                   onChange={(e) => setFormData({...formData, salary: e.target.value})}
                   required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none'
+                  }}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Join Date</label>
-                <Input
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>Join Date</label>
+                <input
                   type="date"
                   value={formData.joinDate}
                   onChange={(e) => setFormData({...formData, joinDate: e.target.value})}
                   required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    outline: 'none'
+                  }}
                 />
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <Button
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+                <button
                   type="button"
-                  variant="outline"
                   onClick={() => setDialogOpen(false)}
-                  className="flex-1"
+                  style={{
+                    flex: 1,
+                    backgroundColor: 'transparent',
+                    border: '1px solid #d1d5db',
+                    padding: '0.75rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: '#374151'
+                  }}
                 >
                   Cancel
-                </Button>
-                <Button type="submit" className="flex-1">
+                </button>
+                <button 
+                  type="submit" 
+                  style={{
+                    flex: 1,
+                    backgroundColor: '#3b82f6',
+                    border: 'none',
+                    padding: '0.75rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '600',
+                    color: 'white'
+                  }}
+                >
                   {selectedEmployee ? "Update" : "Add"} Employee
-                </Button>
+                </button>
               </div>
             </form>
           </div>

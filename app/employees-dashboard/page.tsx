@@ -3,18 +3,42 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
+interface Task {
+  id: number
+  title: string
+  description: string
+  status: 'todo' | 'in_progress' | 'completed'
+  priority: 'low' | 'medium' | 'high'
+  due_date: string
+  created_by: number
+  assigned_to: number
+  created_by_name: string
+  assigned_to_name: string
+  department_name: string
+  created_at: string
+}
+
 export default function EmployeesDashboard() {
   const router = useRouter()
   const [employee, setEmployee] = useState<any>(null)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState("")
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [showTaskDetails, setShowTaskDetails] = useState(false)
 
   useEffect(() => {
     const data = localStorage.getItem("employee")
-    if (!data) {
-      router.push("/employee-login")
+    const userType = localStorage.getItem("userType")
+    
+    if (!data || userType !== 'employee') {
+      router.push("/dashboard/employees/login")
       return
     }
-    setEmployee(JSON.parse(data))
+    
+    const employeeData = JSON.parse(data)
+    setEmployee(employeeData)
+    fetchEmployeeTasks(employeeData.id)
     
     const updateTime = () => {
       setCurrentTime(new Date().toLocaleTimeString('en-US', { 
@@ -25,13 +49,37 @@ export default function EmployeesDashboard() {
     }
     updateTime()
     const interval = setInterval(updateTime, 1000)
-    return () => clearInterval(interval)
+    
+    return () => {
+      clearInterval(interval)
+    }
   }, [router])
 
+  const fetchEmployeeTasks = async (employeeId: number) => {
+    try {
+      const response = await fetch('/api/tasks')
+      const allTasks = await response.json()
+      // Filter tasks assigned to current employee
+      const employeeTasks = Array.isArray(allTasks) ? allTasks.filter((task: Task) => task.assigned_to === employeeId) : []
+      setTasks(employeeTasks)
+    } catch (error) {
+      console.error('Error fetching tasks:', error)
+      setTasks([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleLogout = () => {
+    console.log('Logout clicked') // Debug log
     localStorage.removeItem("employee")
     localStorage.removeItem("userType")
-    router.push("/employee-login")
+    router.push("/dashboard/employees/login")
+  }
+
+  const handleTaskDetails = (task: Task) => {
+    setSelectedTask(task)
+    setShowTaskDetails(true)
   }
 
   if (!employee) {
@@ -67,23 +115,20 @@ export default function EmployeesDashboard() {
           
           <div style={styles.headerRight}>
             <div style={styles.userInfo}>
-              <p style={styles.userName}>{employee.first_name} {employee.last_name}</p>
-              <p style={styles.userRole}>{employee.position}</p>
+              <p style={styles.userName}>{employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`}</p>
+              <p style={styles.userRole}>{employee.position || 'Employee'}</p>
             </div>
             
-            <div style={styles.profileDropdown}>
-              <div style={styles.profileAvatar}>
-                {employee.first_name[0]}
-              </div>
-              <div style={styles.dropdownMenu}>
-                <button
-                  onClick={handleLogout}
-                  style={styles.logoutButton}
-                >
-                  Sign Out
-                </button>
-              </div>
+            <div style={styles.profileAvatar}>
+              {(employee.name?.[0] || employee.first_name?.[0] || 'E').toUpperCase()}
             </div>
+            
+            <button
+              onClick={handleLogout}
+              style={styles.logoutButtonNav}
+            >
+              Sign Out
+            </button>
           </div>
         </div>
       </header>
@@ -94,8 +139,8 @@ export default function EmployeesDashboard() {
         <div style={styles.welcomeSection}>
           <div style={styles.welcomeCard}>
             <div>
-              <h1 style={styles.welcomeTitle}>Welcome back, {employee.first_name}!</h1>
-              <p style={styles.welcomeSubtitle}>Ready to conquer your day? You have 3 tasks waiting.</p>
+              <h1 style={styles.welcomeTitle}>Welcome back, {employee.name || employee.first_name || 'Employee'}!</h1>
+              <p style={styles.welcomeSubtitle}>Ready to conquer your day? You have {Array.isArray(tasks) ? tasks.filter(task => task.status === 'todo').length : 0} tasks waiting.</p>
             </div>
             <div style={styles.timeSection}>
               <div style={styles.currentTime}>{currentTime}</div>
@@ -118,19 +163,19 @@ export default function EmployeesDashboard() {
             <div style={styles.employeeCard}>
               <div style={styles.employeeHeader}>
                 <div style={styles.employeeAvatar}>
-                  {employee.first_name[0]}{employee.last_name[0]}
+                  {(employee.name?.[0] || employee.first_name?.[0] || 'E').toUpperCase()}{(employee.name?.[1] || employee.last_name?.[0] || 'M').toUpperCase()}
                 </div>
                 <div style={styles.employeeInfo}>
-                  <h2 style={styles.employeeName}>{employee.first_name} {employee.last_name}</h2>
-                  <p style={styles.employeePosition}>{employee.position}</p>
+                  <h2 style={styles.employeeName}>{employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`}</h2>
+                  <p style={styles.employeePosition}>{employee.position || 'Employee'}</p>
                 </div>
               </div>
 
               <div style={styles.infoList}>
-                <InfoItem label="Employee ID" value={employee.employee_id} />
-                <InfoItem label="Email" value={employee.email} />
-                <InfoItem label="Department" value={`Department ${employee.department_id}`} />
-                <InfoItem label="Member Since" value={new Date(employee.hire_date).toLocaleDateString()} />
+                <InfoItem label="Employee ID" value={employee.id?.toString() || 'N/A'} />
+                <InfoItem label="Email" value={employee.email || 'N/A'} />
+                <InfoItem label="Department" value={employee.department_id ? `Department ${employee.department_id}` : 'N/A'} />
+                <InfoItem label="Member Since" value={employee.hire_date ? new Date(employee.hire_date).toLocaleDateString() : 'N/A'} />
               </div>
             </div>
 
@@ -138,10 +183,10 @@ export default function EmployeesDashboard() {
             <div style={styles.statsCard}>
               <h3 style={styles.statsTitle}>Quick Stats</h3>
               <div style={styles.statsList}>
-                <StatItem label="Completed Tasks" value="12" />
-                <StatItem label="Pending Tasks" value="3" />
-                <StatItem label="Projects" value="5" />
-                <StatItem label="Team Members" value="8" />
+                <StatItem label="Completed Tasks" value={Array.isArray(tasks) ? tasks.filter(task => task.status === 'completed').length.toString() : "0"} />
+                <StatItem label="Pending Tasks" value={Array.isArray(tasks) ? tasks.filter(task => task.status === 'todo').length.toString() : "0"} />
+                <StatItem label="In Progress" value={Array.isArray(tasks) ? tasks.filter(task => task.status === 'in_progress').length.toString() : "0"} />
+                <StatItem label="Total Tasks" value={Array.isArray(tasks) ? tasks.length.toString() : "0"} />
               </div>
             </div>
           </div>
@@ -160,35 +205,129 @@ export default function EmployeesDashboard() {
               </div>
 
               <div style={styles.tasksList}>
-                <TaskCard
-                  title="Complete Project Documentation"
-                  description="Write comprehensive documentation for the current project including API endpoints and user guides. Ensure all technical specifications are covered."
-                  dueDate="2024-10-20"
-                  priority="high"
-                  status="in-progress"
-                  progress={65}
-                />
-                <TaskCard
-                  title="Team Meeting Preparation"
-                  description="Prepare agenda and presentation materials for the upcoming quarterly team meeting. Coordinate with team leads for updates."
-                  dueDate="2024-10-18"
-                  priority="medium"
-                  status="pending"
-                  progress={30}
-                />
-                <TaskCard
-                  title="Code Review Session"
-                  description="Review pull requests from the development team. Focus on code quality, security, and performance improvements."
-                  dueDate="2024-10-25"
-                  priority="medium"
-                  status="pending"
-                  progress={0}
-                />
+                {Array.isArray(tasks) && tasks.length > 0 ? (
+                  tasks.slice(0, 3).map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      title={task.title}
+                      description={task.description || 'No description provided'}
+                      dueDate={task.due_date}
+                      priority={task.priority}
+                      status={task.status === 'todo' ? 'pending' : task.status === 'in_progress' ? 'in-progress' : 'completed'}
+                      progress={task.status === 'completed' ? 100 : task.status === 'in_progress' ? 65 : 0}
+                      onViewDetails={() => handleTaskDetails(task)}
+                    />
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '2rem', color: '#cbd5e1' }}>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
+                    <p style={{ margin: 0 }}>No tasks assigned yet</p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </main>
+
+      {/* Task Details Modal */}
+      {showTaskDetails && selectedTask && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            color: '#111827'
+          }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1.5rem' }}>
+              {selectedTask.title}
+            </h3>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                <span style={{
+                  backgroundColor: selectedTask.priority === 'high' ? '#fee2e2' : 
+                                 selectedTask.priority === 'medium' ? '#fef9c3' : '#dcfce7',
+                  color: selectedTask.priority === 'high' ? '#991b1b' : 
+                         selectedTask.priority === 'medium' ? '#854d0e' : '#166534',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {selectedTask.priority} priority
+                </span>
+                <span style={{
+                  backgroundColor: selectedTask.status === 'completed' ? '#dcfce7' : 
+                                 selectedTask.status === 'in_progress' ? '#dbeafe' : '#f3f4f6',
+                  color: selectedTask.status === 'completed' ? '#166534' : 
+                         selectedTask.status === 'in_progress' ? '#1e40af' : '#374151',
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  fontSize: '12px',
+                  fontWeight: '600'
+                }}>
+                  {selectedTask.status.replace('_', ' ')}
+                </span>
+              </div>
+
+              <div style={{ marginBottom: '1rem' }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: '600', color: '#111827', marginBottom: '0.5rem' }}>Description</h4>
+                <p style={{ color: '#6b7280', margin: 0 }}>{selectedTask.description || 'No description provided'}</p>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827', marginBottom: '0.25rem' }}>Due Date</h4>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    {new Date(selectedTask.due_date).toLocaleDateString()}
+                  </div>
+                </div>
+                <div>
+                  <h4 style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827', marginBottom: '0.25rem' }}>Department</h4>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    {selectedTask.department_name || 'Not specified'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <button
+                onClick={() => setShowTaskDetails(false)}
+                style={{
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: '600',
+                  flex: 1
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -217,7 +356,8 @@ function TaskCard({
   dueDate, 
   priority, 
   status,
-  progress 
+  progress,
+  onViewDetails
 }: { 
   title: string
   description: string
@@ -225,6 +365,7 @@ function TaskCard({
   priority: "low" | "medium" | "high"
   status: "pending" | "in-progress" | "completed"
   progress: number
+  onViewDetails: () => void
 }) {
   const priorityStyles = {
     low: styles.priorityLow,
@@ -275,7 +416,10 @@ function TaskCard({
         <div style={styles.dueDate}>
           Due: {new Date(dueDate).toLocaleDateString()}
         </div>
-        <button style={styles.detailsButton}>
+        <button 
+          style={styles.detailsButton}
+          onClick={onViewDetails}
+        >
           View Details
         </button>
       </div>
@@ -416,7 +560,8 @@ const styles = {
   },
 
   profileDropdown: {
-    position: 'relative' as const
+    position: 'relative' as const,
+    zIndex: 1001
   },
 
   profileAvatar: {
@@ -430,10 +575,26 @@ const styles = {
     fontWeight: 'bold',
     fontSize: '1.125rem',
     color: '#0f172a',
+    transition: 'transform 0.2s ease'
+  },
+
+  logoutButtonNav: {
+    background: '#ef4444',
+    border: 'none',
+    padding: '0.5rem 1rem',
+    color: 'white',
     cursor: 'pointer',
-    transition: 'transform 0.2s ease',
+    borderRadius: '8px',
+    fontWeight: '600',
+    fontSize: '0.875rem',
+    transition: 'all 0.2s ease',
     ':hover': {
-      transform: 'scale(1.1)'
+      background: '#dc2626',
+      transform: 'scale(1.05)'
+    },
+    ':active': {
+      background: '#b91c1c',
+      transform: 'scale(0.95)'
     }
   },
 
@@ -442,31 +603,39 @@ const styles = {
     top: '100%',
     right: 0,
     marginTop: '0.5rem',
-    background: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(20px)',
+    background: 'white',
     borderRadius: '16px',
     padding: '0.5rem',
-    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    opacity: 0,
-    visibility: 'hidden' as const,
-    transform: 'translateY(-10px)',
-    transition: 'all 0.3s ease'
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+    border: '2px solid #e5e7eb',
+    opacity: 1,
+    visibility: 'visible' as const,
+    transform: 'translateY(0)',
+    transition: 'all 0.3s ease',
+    zIndex: 1000,
+    minWidth: '120px'
   },
 
   logoutButton: {
-    background: 'none',
+    background: '#ef4444',
     border: 'none',
     padding: '0.75rem 1rem',
-    color: '#374151',
+    color: 'white',
     cursor: 'pointer',
     borderRadius: '8px',
-    fontWeight: '500',
+    fontWeight: '600',
     width: '100%',
     textAlign: 'left' as const,
+    fontSize: '0.875rem',
+    transition: 'all 0.2s ease',
+    display: 'block',
     ':hover': {
-      background: '#fef2f2',
-      color: '#dc2626'
+      background: '#dc2626',
+      transform: 'scale(1.02)'
+    },
+    ':active': {
+      background: '#b91c1c',
+      transform: 'scale(0.98)'
     }
   },
 
